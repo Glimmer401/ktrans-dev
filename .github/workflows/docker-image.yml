@@ -9,8 +9,23 @@ on:
 env:
   DOCKERHUB_REPO: ${{ secrets.DOCKERHUB_USERNAME }}/ktransformers
 jobs:
-  docker:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run tests
+        run: |
+          if [ -f docker-compose.test.yml ]; then
+            docker-compose --file docker-compose.test.yml build
+            docker-compose --file docker-compose.test.yml run sut
+          else
+            docker build . --file Dockerfile
+          fi
+
+  docker_task:
+    needs: test
     name: ${{ matrix.instruct}}
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -24,10 +39,8 @@ jobs:
           - {instruct: "NATIVE",  platform: "linux/arm64"}
     # 运行测试，如果需要的话，将注释取消掉并且修改为自己需要的内容
     # See also https://docs.docker.com/docker-hub/builds/automated-testing/
-    test:
-      runs-on: ubuntu-latest
 
-      steps:
+    steps:
         - uses: actions/checkout@v2
 
         - name: Run tests
@@ -39,11 +52,7 @@ jobs:
               docker build . --file Dockerfile
             fi
 
-    build:
-      # 如果需要在构建前进行测试的话需要取消下面的注释和上面对应的 test 动作的注释。
-      needs: test
-      runs-on: ubuntu-latest
-      steps:
+          # needs: test
         - name: Move Docker data directory
           run: |
             sudo systemctl stop docker
